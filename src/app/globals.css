@@ -6,32 +6,34 @@
   a single signal-red record accent. Restrained motion, tabular numerals.
 */
 @theme {
-  /* Light theme — white/off-white surfaces, teal accent (Loom-like
-     structure and rhythm; deliberately not Loom's purple). */
-  --color-ink: oklch(24% 0.01 260);
-  --color-ink-dim: oklch(43% 0.012 260);
-  --color-ink-faint: oklch(52% 0.012 260);
+  /* Richer light theme — warm whites, deeper teal accent, more contrast. */
+  --color-ink: oklch(18% 0.012 260);
+  --color-ink-dim: oklch(38% 0.014 260);
+  --color-ink-faint: oklch(54% 0.012 260);
 
-  --color-bg: oklch(98% 0.006 85);
+  --color-bg: oklch(97% 0.007 85);
   --color-panel: oklch(100% 0 0);
-  --color-panel-2: oklch(95% 0.006 85);
-  --color-edge: oklch(86% 0.008 85);
-  --color-edge-soft: oklch(92% 0.006 85);
+  --color-panel-2: oklch(94% 0.007 85);
+  --color-edge: oklch(84% 0.009 85);
+  --color-edge-soft: oklch(91% 0.007 85);
 
-  --color-rec: oklch(56% 0.2 25);
-  --color-rec-soft: oklch(56% 0.2 25 / 12%);
-  --color-ok: oklch(56% 0.14 152);
-  --color-warn: oklch(50% 0.15 70);
-  --color-accent: oklch(58% 0.12 182);
+  --color-rec: oklch(56% 0.22 25);
+  --color-rec-soft: oklch(56% 0.22 25 / 10%);
+  --color-ok: oklch(56% 0.15 152);
+  --color-warn: oklch(50% 0.16 70);
+  --color-accent: oklch(56% 0.14 182);
+  --color-accent-soft: oklch(56% 0.14 182 / 10%);
 
   --font-display: var(--font-space-grotesk), system-ui, sans-serif;
   --font-body: var(--font-inter), system-ui, sans-serif;
 
   --ease-snap: cubic-bezier(0.2, 0.9, 0.25, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --duration-fast: 130ms;
   --duration-normal: 240ms;
 
-  --radius-card: 10px;
+  --radius-card: 12px;
 }
 
 html,
@@ -43,7 +45,7 @@ body {
 }
 
 ::selection {
-  background: color-mix(in oklch, var(--color-accent) 30%, transparent);
+  background: color-mix(in oklch, var(--color-accent) 25%, transparent);
 }
 
 .font-display {
@@ -69,39 +71,135 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* ── Animations ─────────────────────────────────────────────────────────── */
+
 @keyframes rec-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.35;
-  }
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
 }
 .rec-pulse {
-  animation: rec-pulse 1.6s ease-in-out infinite;
+  animation: rec-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes rec-ring-pulse {
+  0%   { box-shadow: 0 0 0 0 oklch(56% 0.22 25 / 55%); }
+  70%  { box-shadow: 0 0 0 10px oklch(56% 0.22 25 / 0%); }
+  100% { box-shadow: 0 0 0 0 oklch(56% 0.22 25 / 0%); }
+}
+.rec-ring-pulse {
+  animation: rec-ring-pulse 1.6s ease-out infinite;
 }
 
 @keyframes rise-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 .rise-in {
   animation: rise-in var(--duration-normal) var(--ease-snap) both;
 }
 
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.fade-in {
+  animation: fade-in var(--duration-normal) ease both;
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.scale-in {
+  animation: scale-in var(--duration-normal) var(--ease-spring) both;
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(100%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.slide-up {
+  animation: slide-up 300ms var(--ease-out) both;
+}
+
+@keyframes stagger-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.stagger-in {
+  opacity: 0;
+  animation: stagger-in 500ms var(--ease-out) forwards;
+}
+
+@keyframes blob-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(40px, -30px) scale(1.06); }
+  66%       { transform: translate(-30px, 20px) scale(0.96); }
+}
+.blob-drift {
+  animation: blob-drift 14s ease-in-out infinite;
+}
+
+@keyframes blob-drift-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(-50px, 30px) scale(1.08); }
+  66%       { transform: translate(30px, -40px) scale(0.94); }
+}
+.blob-drift-2 {
+  animation: blob-drift-2 18s ease-in-out infinite;
+}
+
+@keyframes orbit {
+  from { transform: rotate(0deg) translateX(var(--orbit-r, 80px)) rotate(0deg); }
+  to   { transform: rotate(360deg) translateX(var(--orbit-r, 80px)) rotate(-360deg); }
+}
+.orbit {
+  animation: orbit var(--orbit-duration, 12s) linear infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
+.float {
+  animation: float 4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  from { background-position: -200% center; }
+  to   { background-position: 200% center; }
+}
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-panel-2) 25%,
+    var(--color-edge-soft) 50%,
+    var(--color-panel-2) 75%
+  );
+  background-size: 200% auto;
+  animation: shimmer 1.4s linear infinite;
+}
+
+@keyframes countdown-pop {
+  0%   { transform: scale(1.3); opacity: 0; }
+  40%  { transform: scale(1);   opacity: 1; }
+  100% { transform: scale(1);   opacity: 1; }
+}
+.countdown-pop {
+  animation: countdown-pop 0.35s var(--ease-spring) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .rec-pulse,
-  .rise-in {
+  .rec-pulse, .rec-ring-pulse, .rise-in, .fade-in, .scale-in,
+  .slide-up, .stagger-in, .blob-drift, .blob-drift-2,
+  .orbit, .float, .shimmer, .countdown-pop {
     animation: none;
+    opacity: 1;
+    transform: none;
   }
 }
+
+/* ── Utilities ──────────────────────────────────────────────────────────── */
 
 /* Native range inputs used in the editor side panel. */
 input[type="range"] {
@@ -112,4 +210,18 @@ input[type="range"] {
 .thin-scroll {
   scrollbar-width: thin;
   scrollbar-color: var(--color-edge) transparent;
+}
+
+/* Card hover lift */
+.card-lift {
+  transition: transform 220ms var(--ease-out), box-shadow 220ms var(--ease-out);
+}
+.card-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px oklch(0% 0 0 / 10%);
+}
+
+/* Glow ring on hover */
+.glow-ring:hover {
+  box-shadow: 0 0 0 3px oklch(56% 0.14 182 / 18%);
 }

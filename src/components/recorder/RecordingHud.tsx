@@ -40,25 +40,65 @@ export function RecordingHud({
 
   return (
     <div className="rise-in fixed bottom-6 left-6 z-50 flex flex-col items-start gap-3">
+      {/* Camera bubble with pulsing ring */}
       {session.liveCameraStream && (
-        <div className="h-36 w-36 overflow-hidden rounded-full border-[3px] border-white/85 bg-black/30 shadow-xl shadow-black/50">
-          <video ref={cameraRef} autoPlay muted playsInline className="h-full w-full scale-x-[-1] object-cover" />
+        <div className="relative">
+          {/* Outer pulsing ring */}
+          {!paused && (
+            <span
+              aria-hidden
+              className="rec-ring-pulse absolute inset-0 rounded-full border-2 border-rec/60"
+              style={{ margin: "-6px" }}
+            />
+          )}
+          <div
+            className={`h-36 w-36 overflow-hidden rounded-full border-[3px] shadow-2xl shadow-black/60 transition-all duration-300 ${
+              paused ? "border-warn/70 opacity-70 grayscale" : "border-white/90"
+            }`}
+          >
+            <video
+              ref={cameraRef}
+              autoPlay
+              muted
+              playsInline
+              className="h-full w-full scale-x-[-1] object-cover"
+            />
+          </div>
+          {/* Paused overlay */}
+          {paused && (
+            <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40">
+              <svg width="20" height="20" viewBox="0 0 16 16" fill="white" aria-hidden>
+                <rect x="4" y="3" width="3" height="10" rx="1" />
+                <rect x="9" y="3" width="3" height="10" rx="1" />
+              </svg>
+            </div>
+          )}
         </div>
       )}
-      <div className="flex items-center gap-1 rounded-full border border-edge bg-panel/95 py-1.5 pl-4 pr-1.5 shadow-xl shadow-black/50 backdrop-blur">
+
+      {/* Controls pill */}
+      <div className="flex items-center gap-1 rounded-full border border-edge bg-panel/95 py-1.5 pl-4 pr-1.5 shadow-xl shadow-black/40 backdrop-blur">
+        {/* Status dot */}
         <span
-          className={`mr-1 h-2.5 w-2.5 rounded-full ${paused ? "bg-warn" : "bg-rec rec-pulse"}`}
+          className={`mr-1 h-2.5 w-2.5 rounded-full transition-colors ${
+            paused ? "bg-warn" : "bg-rec rec-pulse"
+          }`}
           aria-hidden
         />
-        <span className="tnum mr-2 min-w-[44px] text-sm text-ink" aria-label="Elapsed time">
+        {/* Timer */}
+        <span
+          className="tnum mr-2 min-w-[48px] text-sm font-medium text-ink"
+          aria-label="Elapsed time"
+        >
           {formatClock(elapsed)}
         </span>
 
+        {/* Pause / Resume */}
         <button
           onClick={paused ? onResume : onPause}
           aria-label={paused ? "Resume recording" : "Pause recording"}
           title={paused ? "Resume" : "Pause"}
-          className="rounded-full p-2 text-ink-dim hover:bg-panel-2 hover:text-ink"
+          className="rounded-full p-2 text-ink-dim transition-all hover:bg-panel-2 hover:text-ink active:scale-95"
         >
           {paused ? (
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
@@ -72,11 +112,12 @@ export function RecordingHud({
           )}
         </button>
 
+        {/* Discard */}
         <button
           onClick={onDiscard}
           aria-label="Discard recording"
           title="Discard"
-          className="rounded-full p-2 text-ink-dim hover:bg-panel-2 hover:text-ink"
+          className="rounded-full p-2 text-ink-dim transition-all hover:bg-panel-2 hover:text-ink active:scale-95"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
             <path
@@ -88,18 +129,20 @@ export function RecordingHud({
           </svg>
         </button>
 
+        {/* Stop — big, prominent, with inner square icon */}
         <button
           onClick={onStop}
           aria-label="Stop and finish recording"
           title="Stop recording"
-          className="ml-1 flex items-center gap-2 rounded-full bg-rec px-4 py-2 text-sm font-medium text-white hover:brightness-110"
+          className="group relative ml-1 flex items-center gap-2 overflow-hidden rounded-full bg-rec px-4 py-2 text-sm font-medium text-white shadow-md shadow-rec/30 transition-all hover:brightness-110 hover:shadow-lg hover:shadow-rec/40 active:scale-95"
         >
-          <span className="h-2.5 w-2.5 rounded-[3px] bg-white" aria-hidden />
+          <span className="h-2.5 w-2.5 rounded-[3px] bg-white transition-transform group-hover:scale-90" aria-hidden />
           Stop
         </button>
       </div>
+
       {paused && (
-        <p className="ml-1 rounded-md bg-panel/90 px-2 py-1 text-[12px] text-warn shadow-md shadow-black/40 backdrop-blur-sm">
+        <p className="ml-1 rounded-lg bg-panel/90 px-3 py-1.5 text-[12px] font-medium text-warn shadow-md shadow-black/30 backdrop-blur-sm">
           Paused — nothing is being captured.
         </p>
       )}

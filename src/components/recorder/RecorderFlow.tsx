@@ -153,15 +153,17 @@ export function RecorderFlow({ onClose }: RecorderFlowProps) {
 
   if (flow.phase === "countdown") {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/70">
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/75 backdrop-blur-sm">
         <div
           key={flow.count}
-          className="rise-in font-display tnum text-[120px] font-semibold leading-none text-white"
+          className="countdown-pop font-display tnum text-[140px] font-semibold leading-none text-white drop-shadow-2xl"
           aria-live="assertive"
         >
           {flow.count}
         </div>
-        <p className="mt-4 text-sm text-white/70">Recording starts in a moment — switch to what you want to capture.</p>
+        <p className="mt-6 text-sm font-medium text-white/60">
+          Switch to what you want to capture
+        </p>
         <Button variant="onDark" size="sm" className="mt-6" onClick={cancelEverything}>
           Cancel
         </Button>

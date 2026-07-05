@@ -1,111 +1,112 @@
 /**
- * Soft chime sound cues for recording lifecycle events.
- * All tones are synthesised with the Web Audio API — no audio files needed.
+ * Apple-style system sound cues for recording lifecycle events.
+ *
+ * Design principles (macOS / iOS reference):
+ *  - Very short attack (≤ 5ms), exponential decay — never linear.
+ *  - 2–3 harmonic partials stacked at falling amplitudes for warmth.
+ *  - No sustain — pure attack + decay envelope, like a chime or bell.
+ *  - Stereo spread is avoided (mono only) for maximum cross-device compatibility.
  */
 
-let ctx: AudioContext | null = null;
+let _ctx: AudioContext | null = null;
 
-function getCtx(): AudioContext {
-  if (!ctx || ctx.state === "closed") ctx = new AudioContext();
-  return ctx;
+function ctx(): AudioContext {
+  if (!_ctx || _ctx.state === "closed") _ctx = new AudioContext();
+  return _ctx;
 }
 
-/** Shape a gain node with a quick attack and smooth release. */
-function envelope(
-  gainNode: GainNode,
-  ac: AudioContext,
+/** Resume the context (required after a user gesture on some browsers). */
+export function unlockAudio(): void {
+  try {
+    const ac = ctx();
+    if (ac.state === "suspended") void ac.resume();
+  } catch {
+    // Ignore — context will be created on first sound call.
+  }
+}
+
+/**
+ * Play a single harmonic bell tone.
+ * Partials: fundamental + optional 2nd (octave) + 3rd (fifth above octave)
+ * Each has an exponential gain envelope — attack → peak → exponential decay.
+ */
+function chime(
+  freq: number,
   startAt: number,
   peakGain: number,
-  attackSec: number,
   decaySec: number,
-  sustainGain: number,
-  releaseSec: number,
-  totalDuration: number,
+  harmonics: [number, number][] = [[2, 0.35], [3, 0.12]],
 ) {
-  const g = gainNode.gain;
-  g.setValueAtTime(0, startAt);
-  g.linearRampToValueAtTime(peakGain, startAt + attackSec);
-  g.linearRampToValueAtTime(sustainGain, startAt + attackSec + decaySec);
-  g.setValueAtTime(sustainGain, startAt + totalDuration - releaseSec);
-  g.linearRampToValueAtTime(0, startAt + totalDuration);
-}
+  const ac = ctx();
+  const partials: [number, number][] = [[1, 1], ...harmonics];
 
-function playTone(
-  frequency: number,
-  startAt: number,
-  duration: number,
-  peakGain = 0.22,
-  type: OscillatorType = "sine",
-) {
-  const ac = getCtx();
-  const osc = ac.createOscillator();
-  const gain = ac.createGain();
+  for (const [ratio, amp] of partials) {
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
 
-  osc.type = type;
-  osc.frequency.setValueAtTime(frequency, startAt);
-  osc.connect(gain);
-  gain.connect(ac.destination);
+    osc.type = "sine";
+    osc.frequency.value = freq * ratio;
+    osc.connect(gain);
+    gain.connect(ac.destination);
 
-  envelope(gain, ac, startAt, peakGain, 0.008, 0.04, peakGain * 0.6, 0.08, duration);
+    // Tiny linear attack → exponential decay (bell physics).
+    gain.gain.setValueAtTime(0, startAt);
+    gain.gain.linearRampToValueAtTime(peakGain * amp, startAt + 0.004);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startAt + decaySec);
 
-  osc.start(startAt);
-  osc.stop(startAt + duration + 0.01);
-}
-
-/** Unlock AudioContext on first user gesture (call once early). */
-export function unlockAudio() {
-  try {
-    getCtx();
-  } catch {
-    // Ignore — context will be created on first chime.
+    osc.start(startAt);
+    osc.stop(startAt + decaySec + 0.01);
   }
 }
 
-/** 3-2-1 countdown tick. n = 3, 2, or 1. */
-export function playCountdownBeep(n: number) {
-  const ac = getCtx();
+// ─── Public API ─────────────────────────────────────────────────────────────
+
+/** Countdown tick — 3, 2, or 1. Higher pitch, sharper on "1". */
+export function playCountdownBeep(n: number): void {
+  const ac = ctx();
   if (ac.state === "suspended") void ac.resume();
-  // Higher pitch for earlier counts, punchy double-click feel for "1".
-  const freq = n === 1 ? 880 : 660;
   const now = ac.currentTime;
+
   if (n === 1) {
-    playTone(freq, now, 0.18, 0.28);
-    playTone(freq * 1.5, now + 0.1, 0.12, 0.18);
+    // "Go" — bright double-ping, like iOS screenshot sound.
+    chime(1047, now, 0.28, 0.35, [[2, 0.3], [3, 0.1]]);          // C6
+    chime(1319, now + 0.07, 0.18, 0.25, [[2, 0.2]]);              // E6
   } else {
-    playTone(freq, now, 0.15, 0.2);
+    // Regular tick — muted mid ping.
+    chime(n === 3 ? 784 : 880, now, 0.18, 0.22, [[2, 0.25]]);    // G5 / A5
   }
 }
 
-/** Soft rising two-note chime — recording has started. */
-export function playRecordStart() {
-  const ac = getCtx();
+/** Recording starts — warm rising two-note chime, AirDrop-accepted character. */
+export function playRecordStart(): void {
+  const ac = ctx();
   if (ac.state === "suspended") void ac.resume();
   const now = ac.currentTime;
-  playTone(523.25, now, 0.18, 0.18);        // C5
-  playTone(783.99, now + 0.13, 0.22, 0.22); // G5
+  chime(523.25, now, 0.22, 0.4, [[2, 0.3], [3, 0.1]]);           // C5
+  chime(783.99, now + 0.1, 0.26, 0.5, [[2, 0.28], [3, 0.09]]);   // G5
 }
 
-/** Muted single low note — recording paused. */
-export function playRecordPause() {
-  const ac = getCtx();
+/** Recording paused — single muted low note, like a macOS error dismiss. */
+export function playRecordPause(): void {
+  const ac = ctx();
   if (ac.state === "suspended") void ac.resume();
-  playTone(392, ac.currentTime, 0.22, 0.16); // G4
+  chime(440, ac.currentTime, 0.16, 0.28, [[2, 0.2]]);             // A4
 }
 
-/** Bright two-note ascending — recording resumed. */
-export function playRecordResume() {
-  const ac = getCtx();
-  if (ac.state === "suspended") void ac.resume();
-  const now = ac.currentTime;
-  playTone(440, now, 0.14, 0.15);           // A4
-  playTone(659.25, now + 0.1, 0.18, 0.2);  // E5
-}
-
-/** Gentle falling two-note — recording stopped. */
-export function playRecordStop() {
-  const ac = getCtx();
+/** Recording resumed — bright single tap, like macOS lock click. */
+export function playRecordResume(): void {
+  const ac = ctx();
   if (ac.state === "suspended") void ac.resume();
   const now = ac.currentTime;
-  playTone(659.25, now, 0.18, 0.2);         // E5
-  playTone(392, now + 0.14, 0.22, 0.18);   // G4
+  chime(659.25, now, 0.18, 0.22, [[2, 0.25]]);                    // E5
+  chime(880, now + 0.08, 0.14, 0.2, [[2, 0.18]]);                 // A5
+}
+
+/** Recording stopped — soft descending resolution, like macOS alert dismiss. */
+export function playRecordStop(): void {
+  const ac = ctx();
+  if (ac.state === "suspended") void ac.resume();
+  const now = ac.currentTime;
+  chime(659.25, now, 0.22, 0.45, [[2, 0.28], [3, 0.1]]);         // E5
+  chime(523.25, now + 0.12, 0.18, 0.5, [[2, 0.22], [3, 0.08]]); // C5 — resolves down
 }

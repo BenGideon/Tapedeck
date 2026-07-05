@@ -34,6 +34,8 @@ export function EditorShell({ projectId }: EditorShellProps) {
   const [selectedSegment, setSelectedSegment] = useState<number | null>(null);
   const [selectedOverlayId, setSelectedOverlayId] = useState<string | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
+  /** Mobile: controls whether the bottom-sheet SidePanel is open */
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const controllerRef = useRef<PlaybackController | null>(null);
   if (!controllerRef.current) controllerRef.current = new PlaybackController();
@@ -78,7 +80,7 @@ export function EditorShell({ projectId }: EditorShellProps) {
     };
   }, [projectId, controller]);
 
-  // Track play state (state changes only on transitions, not per frame).
+  // Track play state.
   useEffect(() => {
     const unsubscribe = controller.subscribe((_, isPlaying) => {
       setPlaying((prev) => (prev === isPlaying ? prev : isPlaying));
@@ -105,8 +107,6 @@ export function EditorShell({ projectId }: EditorShellProps) {
     [projectId],
   );
 
-  /** The browser's parsed duration is authoritative over the recorder's
-   * estimate — reconcile once when media metadata arrives. */
   const handleDurationKnown = useCallback(
     (realDuration: number) => {
       setDuration((current) => {
@@ -127,7 +127,7 @@ export function EditorShell({ projectId }: EditorShellProps) {
     }
   }, [title, loaded, projectId]);
 
-  // Keyboard shortcuts: space = play/pause, s = split, delete = remove selection.
+  // Keyboard shortcuts.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
@@ -176,9 +176,10 @@ export function EditorShell({ projectId }: EditorShellProps) {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-edge-soft px-4">
-        <div className="flex min-w-0 items-center gap-4">
-          <Link href="/" className="shrink-0 hover:opacity-80" aria-label="Home">
+      {/* ── Header ── */}
+      <header className="flex h-14 shrink-0 items-center justify-between border-b border-edge-soft bg-panel/80 px-4 backdrop-blur-sm">
+        <div className="flex min-w-0 items-center gap-3">
+          <Link href="/" className="shrink-0 hover:opacity-80 transition-opacity" aria-label="Home">
             <Logo />
           </Link>
           <input
@@ -187,19 +188,35 @@ export function EditorShell({ projectId }: EditorShellProps) {
             onBlur={commitTitle}
             onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
             aria-label="Project title"
-            className="w-full max-w-[320px] truncate rounded-md border border-transparent bg-transparent px-2 py-1 text-sm text-ink hover:border-edge focus:border-edge focus:bg-panel"
+            className="w-full max-w-[200px] truncate rounded-md border border-transparent bg-transparent px-2 py-1 text-sm text-ink hover:border-edge focus:border-edge focus:bg-panel sm:max-w-[320px]"
           />
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <Link href="/projects" className="rounded-md px-3 py-1.5 text-sm text-ink-dim hover:bg-panel-2 hover:text-ink">
+          <Link
+            href="/projects"
+            className="hidden rounded-md px-3 py-1.5 text-sm text-ink-dim hover:bg-panel-2 hover:text-ink sm:block"
+          >
             Projects
           </Link>
+          {/* Mobile: Settings button */}
+          <button
+            onClick={() => setSheetOpen(true)}
+            aria-label="Open settings"
+            className="flex items-center gap-1.5 rounded-md border border-edge-soft px-2.5 py-1.5 text-sm text-ink-dim hover:bg-panel-2 hover:text-ink md:hidden"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" strokeWidth="1.6" />
+              <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" strokeWidth="1.6" />
+            </svg>
+            Settings
+          </button>
           <Button variant="primary" size="sm" onClick={() => setExportOpen(true)}>
             Export
           </Button>
         </div>
       </header>
 
+      {/* ── Main content ── */}
       <div className="flex min-h-0 flex-1">
         <main className="flex min-w-0 flex-1 flex-col">
           <PreviewStage
@@ -228,20 +245,70 @@ export function EditorShell({ projectId }: EditorShellProps) {
           />
         </main>
 
-        <SidePanel
-          meta={loaded.meta}
-          mainBlob={loaded.mainBlob}
-          edit={edit}
-          duration={duration}
-          editedSeconds={editedSeconds}
-          controller={controller}
-          selectedSegment={selectedSegment}
-          onSelectSegment={setSelectedSegment}
-          selectedOverlayId={selectedOverlayId}
-          onSelectOverlay={setSelectedOverlayId}
-          onUpdateEdit={updateEdit}
-        />
+        {/* Desktop SidePanel */}
+        <div className="hidden md:block">
+          <SidePanel
+            meta={loaded.meta}
+            mainBlob={loaded.mainBlob}
+            edit={edit}
+            duration={duration}
+            editedSeconds={editedSeconds}
+            controller={controller}
+            selectedSegment={selectedSegment}
+            onSelectSegment={setSelectedSegment}
+            selectedOverlayId={selectedOverlayId}
+            onSelectOverlay={setSelectedOverlayId}
+            onUpdateEdit={updateEdit}
+          />
+        </div>
       </div>
+
+      {/* ── Mobile Bottom-Sheet SidePanel ── */}
+      {sheetOpen && (
+        <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-label="Settings">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm fade-in"
+            onClick={() => setSheetOpen(false)}
+          />
+          {/* Sheet */}
+          <div className="slide-up absolute bottom-0 left-0 right-0 max-h-[80dvh] overflow-hidden rounded-t-2xl border-t border-edge-soft bg-panel shadow-2xl shadow-black/50">
+            {/* Drag handle */}
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="h-1 w-10 rounded-full bg-edge" />
+            </div>
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-edge-soft px-4 py-2.5">
+              <span className="text-sm font-medium text-ink">Settings</span>
+              <button
+                onClick={() => setSheetOpen(false)}
+                aria-label="Close settings"
+                className="rounded-md p-1 text-ink-faint hover:bg-panel-2 hover:text-ink"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+                  <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+            {/* Scrollable content */}
+            <div className="thin-scroll overflow-y-auto" style={{ maxHeight: "calc(80dvh - 80px)" }}>
+              <SidePanel
+                meta={loaded.meta}
+                mainBlob={loaded.mainBlob}
+                edit={edit}
+                duration={duration}
+                editedSeconds={editedSeconds}
+                controller={controller}
+                selectedSegment={selectedSegment}
+                onSelectSegment={setSelectedSegment}
+                selectedOverlayId={selectedOverlayId}
+                onSelectOverlay={setSelectedOverlayId}
+                onUpdateEdit={updateEdit}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {exportOpen && (
         <ExportDialog
