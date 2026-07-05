@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(npm install --no-audit --no-fund)",
+      "PowerShell(npm run build)",
+      "Read(//c/Users/benof/.claude/projects/C--Users-benof-Downloads-Drive-A-All-git-clones-Loom-Alternate/5d01fb88-2df1-4cb3-883f-b7d74cc20c4a/tool-results/**)",
+      "Bash(python -c ' *)"
+    ]
+  }
+}
