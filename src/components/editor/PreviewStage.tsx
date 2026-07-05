@@ -69,6 +69,9 @@ export function PreviewStage({
   const bubbleVideoRef = useRef<HTMLVideoElement>(null);
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
   const [visibleOverlayIds, setVisibleOverlayIds] = useState("");
+  const [playbackRate, setPlaybackRate] = useState(1);
+
+  const SPEED_OPTIONS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 
   // Attach media elements to the playback controller.
   useEffect(() => {
@@ -151,10 +154,18 @@ export function PreviewStage({
       ? bubbleRect(edit.camera, stageSize.width, stageSize.height)
       : null;
 
+  const handleSpeedChange = useCallback(
+    (rate: number) => {
+      setPlaybackRate(rate);
+      controller.setPlaybackRate(rate);
+    },
+    [controller],
+  );
+
   const visibleSet = new Set(visibleOverlayIds.split(",").filter(Boolean));
 
   return (
-    <div className="flex min-h-0 flex-1 items-center justify-center bg-black/40 p-6">
+    <div className="flex min-h-0 flex-1 flex-col items-center justify-center bg-black/40 p-6 gap-3">
       <div
         ref={stageRef}
         className="relative max-h-full max-w-full overflow-hidden rounded-lg bg-black shadow-2xl shadow-black/50"
@@ -166,31 +177,25 @@ export function PreviewStage({
       >
         <video ref={mainRef} src={mainUrl} playsInline preload="auto" className="h-full w-full" />
 
-        {bubbleUrl && (
+        {showBubble && rect && (
           <div
             role="button"
             aria-label="Camera bubble — drag to move"
             onClick={(e) => e.stopPropagation()}
             onPointerDown={dragBubble}
-            className={`group absolute cursor-grab border-[3px] border-white/85 shadow-xl shadow-black/50 transition-opacity active:cursor-grabbing ${
-              showBubble ? "opacity-100" : "pointer-events-none opacity-0"
-            }`}
-            style={
-              rect
-                ? {
-                    left: rect.x,
-                    top: rect.y,
-                    width: rect.w,
-                    height: rect.h,
-                    borderRadius: edit.camera.shape === "circle" ? "9999px" : `${rect.h * 0.12}px`,
-                    overflow: "hidden",
-                  }
-                : { display: "none" }
-            }
+            className="group absolute cursor-grab border-[3px] border-white/85 shadow-xl shadow-black/50 transition-opacity active:cursor-grabbing"
+            style={{
+              left: rect.x,
+              top: rect.y,
+              width: rect.w,
+              height: rect.h,
+              borderRadius: edit.camera.shape === "circle" ? "9999px" : `${rect.h * 0.12}px`,
+              overflow: "hidden",
+            }}
           >
             <video
               ref={bubbleVideoRef}
-              src={bubbleUrl}
+              src={bubbleUrl!}
               playsInline
               muted
               preload="auto"
@@ -202,6 +207,18 @@ export function PreviewStage({
               className="absolute bottom-1 right-1 hidden h-4 w-4 cursor-nwse-resize rounded-full border border-white/40 bg-black/60 group-hover:block"
             />
           </div>
+        )}
+
+        {/* Hidden bubble video for sync when bubble is hidden */}
+        {bubbleUrl && !showBubble && (
+          <video
+            ref={bubbleVideoRef}
+            src={bubbleUrl}
+            playsInline
+            muted
+            preload="auto"
+            className="sr-only"
+          />
         )}
 
         {stageSize.height > 0 &&
@@ -243,6 +260,30 @@ export function PreviewStage({
             </span>
           </div>
         )}
+      </div>
+
+      {/* ── Speed selector bar ── */}
+      <div
+        className="flex items-center gap-0.5 rounded-full border border-white/10 bg-black/70 px-3 py-1.5 backdrop-blur-sm"
+        aria-label="Playback speed"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <span className="mr-2 text-[11px] font-medium text-white/50 select-none">SPEED</span>
+        {SPEED_OPTIONS.map((rate) => (
+          <button
+            key={rate}
+            onClick={() => handleSpeedChange(rate)}
+            aria-label={`${rate}× speed`}
+            aria-pressed={playbackRate === rate}
+            className={`min-w-[38px] rounded-full px-2 py-0.5 text-[12px] font-medium transition-colors duration-100 ${
+              playbackRate === rate
+                ? "bg-accent text-white"
+                : "text-white/60 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            {rate === 1 ? "1×" : `${rate}×`}
+          </button>
+        ))}
       </div>
     </div>
   );

@@ -86,6 +86,11 @@ export class PlaybackController {
     else await this.play();
   }
 
+  setPlaybackRate(rate: number): void {
+    if (this.main) this.main.playbackRate = rate;
+    if (this.bubble) this.bubble.playbackRate = rate;
+  }
+
   seek(timeSec: number): void {
     if (!this.main) return;
     const duration = Number.isFinite(this.main.duration) ? this.main.duration : Infinity;

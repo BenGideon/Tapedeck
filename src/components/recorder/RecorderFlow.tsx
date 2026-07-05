@@ -4,6 +4,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RecordingError, RecordingSession, type RecordingConfig } from "@/lib/media/recorder";
 import { createProjectFromRecording, putMedia } from "@/lib/store/projects";
+import {
+  unlockAudio,
+  playCountdownBeep,
+  playRecordStart,
+  playRecordPause,
+  playRecordResume,
+  playRecordStop,
+} from "@/lib/audio/chimes";
 import { SetupPanel } from "./SetupPanel";
 import { RecordingHud } from "./RecordingHud";
 import { Button } from "@/components/ui/Button";
@@ -91,6 +99,7 @@ export function RecorderFlow({ onClose }: RecorderFlowProps) {
 
       // 3-second countdown; cancelling releases the captured streams.
       setFlow({ phase: "countdown", count: COUNTDOWN_SECONDS });
+      playCountdownBeep(COUNTDOWN_SECONDS);
       let remaining = COUNTDOWN_SECONDS;
       countdownTimerRef.current = setInterval(() => {
         remaining -= 1;
@@ -98,6 +107,7 @@ export function RecorderFlow({ onClose }: RecorderFlowProps) {
           clearCountdown();
           try {
             session.start();
+            playRecordStart();
             setFlow({ phase: "recording", paused: false });
           } catch (error: unknown) {
             disposeSession();
@@ -108,6 +118,7 @@ export function RecorderFlow({ onClose }: RecorderFlowProps) {
             });
           }
         } else {
+          playCountdownBeep(remaining);
           setFlow({ phase: "countdown", count: remaining });
         }
       }, 1000);
@@ -124,7 +135,13 @@ export function RecorderFlow({ onClose }: RecorderFlowProps) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-label="New recording">
         {flow.phase === "setup" ? (
-          <SetupPanel onStart={(config) => void startRecording(config)} onCancel={onClose} />
+          <SetupPanel
+            onStart={(config) => {
+              unlockAudio();
+              void startRecording(config);
+            }}
+            onCancel={onClose}
+          />
         ) : (
           <div className="rise-in rounded-xl border border-edge bg-panel px-8 py-6 text-center shadow-2xl">
             <p className="text-sm text-ink-dim">Waiting for you to choose what to share…</p>
@@ -161,13 +178,18 @@ export function RecorderFlow({ onClose }: RecorderFlowProps) {
         paused={flow.paused}
         onPause={() => {
           session.pause();
+          playRecordPause();
           setFlow({ phase: "recording", paused: true });
         }}
         onResume={() => {
           session.resume();
+          playRecordResume();
           setFlow({ phase: "recording", paused: false });
         }}
-        onStop={() => void finishRecording()}
+        onStop={() => {
+          playRecordStop();
+          void finishRecording();
+        }}
         onDiscard={cancelEverything}
       />
     );
